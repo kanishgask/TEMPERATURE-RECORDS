@@ -1,0 +1,74 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import calendar
+from io import StringIO
+
+# Sample CSV data (as a string)
+data = """
+County,State,Week,AverageTemperature
+Los Angeles,CA,2024-06-03,26.3
+Los Angeles,CA,2024-06-10,27.1
+Los Angeles,CA,2024-07-01,29.2
+Los Angeles,CA,2024-08-01,30.3
+Cook,IL,2024-06-03,23.4
+Cook,IL,2024-06-10,24.1
+Cook,IL,2024-07-01,24.5
+Cook,IL,2024-08-01,25.1
+Maricopa,AZ,2024-06-03,32.5
+Maricopa,AZ,2024-06-10,33.2
+Maricopa,AZ,2024-07-01,34.7
+Maricopa,AZ,2024-08-01,35.1
+Harris,TX,2024-06-03,31.0
+Harris,TX,2024-06-10,32.3
+Harris,TX,2024-07-01,33.6
+Harris,TX,2024-08-01,34.4
+"""
+
+# Read the sample CSV data into a DataFrame
+df = pd.read_csv(StringIO(data))
+
+# Convert week to datetime and extract month
+df['Week'] = pd.to_datetime(df['Week'])
+df['Month'] = df['Week'].dt.month
+df['MonthName'] = df['Week'].dt.strftime('%B')
+
+# Group by County and Month, sum temperatures
+monthly_temp = df.groupby(['County', 'Month'])['AverageTemperature'].sum().reset_index()
+
+# Pivot for summary table
+pivot_table = monthly_temp.pivot(index='County', columns='Month', values='AverageTemperature')
+pivot_table.columns = [calendar.month_abbr[m] for m in pivot_table.columns]
+pivot_table = pivot_table.fillna(0)
+
+# Display pivot table
+print("\n📊 Monthly Total Temperature by County:\n")
+print(pivot_table)
+
+# Identify the county with highest total temperature in summer (June, July, August)
+summer_months = [6, 7, 8]
+summer_data = monthly_temp[monthly_temp['Month'].isin(summer_months)]
+summer_total = summer_data.groupby('County')['AverageTemperature'].sum()
+hottest_county = summer_total.idxmax()
+hottest_value = summer_total.max()
+
+print(f"\n🔥 Hottest county in summer (Jun–Aug): {hottest_county} with total {hottest_value:.2f}°C")
+
+# Plot total summer temperature per county
+plt.figure(figsize=(10, 6))
+sns.barplot(x=summer_total.index, y=summer_total.values, palette='Oranges')
+plt.title('Total Summer Temperatures by County (Jun–Aug)')
+plt.ylabel('Total Temperature')
+plt.xlabel('County')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# Heatmap of monthly totals
+plt.figure(figsize=(10, 6))
+sns.heatmap(pivot_table, annot=True, cmap='YlGnBu', fmt=".1f")
+plt.title("Monthly Total Temperatures by County")
+plt.xlabel("Month")
+plt.ylabel("County")
+plt.tight_layout()
+plt.show()
